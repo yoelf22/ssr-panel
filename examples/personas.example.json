@@ -1,0 +1,6 @@
+[
+  {"id": "B1", "kind": "smb-owner", "text": "You are the owner of a 12-person accounting firm in Leeds, UK; you buy software yourself, hate long contracts, and your clients are small businesses."},
+  {"id": "B2", "kind": "smb-owner", "text": "You are the co-owner of a 30-person dental clinic group in Austin, US; margins are tight and your office manager handles most tools."},
+  {"id": "C1", "kind": "enterprise-buyer", "text": "You are the VP of Operations at a 4,000-person logistics company in Hamburg, Germany; purchases above EUR 50K need procurement and a security review."},
+  {"id": "C2", "kind": "enterprise-buyer", "text": "You are a director of digital innovation at a 15,000-person insurer in Toronto, Canada, with an annual budget for pilots and a board that wants AI results this year."}
+]
