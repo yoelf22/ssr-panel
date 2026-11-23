@@ -1,10 +1,37 @@
 # ssr-panel
 
-A Claude Code skill that runs a synthetic buyer panel on a web page, an offer or a copy variant.
+A Claude Code skill that runs a synthetic buyer panel on a product idea, a concept, a web page or a copy variant. It works conversationally: from a paragraph and a hunch at the idea stage, to a finished page.
 
 Claude role-plays the buyers you define and writes a free-text reaction to the page. A local embedding model maps each reaction onto a 1–5 purchase-intent scale with **Semantic Similarity Rating (SSR)**. Each reaction also returns the buyer's main objection, the event that would make them buy this month, and a one-line restatement of the offer. Those are often more useful than the score.
 
-Use it to compare two versions of a page, to find objections before shipping copy, or to check whether readers can tell what you sell.
+Use it to:
+- **At the idea stage:** test a concept before it can be researched, choose which buyer to interview first, find the assumptions most likely to break, and get an interview guide.
+- **With a page or pitch:** compare two versions, find objections before shipping copy, or check whether readers can tell what you sell.
+
+## Two modes
+
+**Concept mode**, for ideas that don't exist yet. The skill interviews you, one or two questions at a time, to build a concept brief (`examples/concept-brief.md`):
+- the problem and who has it;
+- what the product does;
+- what people do today instead;
+- a rough price;
+- anything you've heard from real people;
+- the assumptions that would sink it.
+
+Only the buyer-facing paragraph goes to the panel. What you've heard from real people becomes first-hand grounding for the matching personas. Each assumption becomes a yes, no or unsure question.
+
+Each persona answers:
+- reaction;
+- what they think the product does;
+- what they do today;
+- their main objection;
+- what must be true to pay;
+- who else must agree;
+- what would make them look for it this month.
+
+**Page mode**, for anything a buyer already reads: landing pages, pitches, service pages. Personas answer: reaction, restatement, objection, trigger.
+
+Either way the skill reports back in conversation. It leads with the decision you named, and offers to revise and rerun, or to write an interview guide built from the assumptions that broke and the recurring objections.
 
 ## Method and sources
 
@@ -29,14 +56,13 @@ It needs the [Claude Code](https://claude.com/claude-code) CLI (`claude -p`) for
 
 ## Use
 
-In Claude Code, say "run a synthetic panel on <url>" or "ask the panel". `SKILL.md` holds the full workflow:
-1. Confirm who the buyers are.
-2. Build the personas.
-3. Extract the page text.
-4. Run the reactions.
-5. Score them.
-6. Tally the themes.
-7. Report.
+In Claude Code, say "I want to test an idea", "run a synthetic panel on <url>" or "ask the panel". `SKILL.md` holds the conversation flow:
+1. Work out which phase you're in.
+2. Build the concept brief, or extract the page text.
+3. Gather what's known, the assumptions and the decision.
+4. Define the buyers.
+5. Run the reactions.
+6. Talk the results through.
 
 The scripts also work without Claude Code's skill loader:
 
@@ -44,18 +70,22 @@ The scripts also work without Claude Code's skill loader:
 S=~/.claude/skills/ssr-panel/scripts
 python3 $S/page2text.py https://example.com pageA.txt
 python3 $S/mkjobs.py personas.json jobs.json pageA --samples 2 --extra examples/extra.example.json
+# or, for an idea: concept.txt next to jobs.json
+python3 $S/mkjobs.py personas.json jobs.json concept --mode concept \
+  --evidence examples/evidence.example.json --assumptions examples/assumptions.example.json
 seq 0 7 | xargs -P 8 -I{} python3 $S/react.py {} jobs.json out
 ~/.cache/ssr-venv/bin/python $S/score.py out scored.json
 python3 $S/tally.py out objection 'price=price|budget' 'proof=no evidence|no proof'
+python3 $S/tally.py out --assumptions
 ```
 
 | Script | Does |
 |---|---|
 | `page2text.py` | URL or HTML file → plain text, from the first `<h1>` to the `<footer>` |
-| `mkjobs.py` | personas × pages × samples → `jobs.json`, with optional extra questions |
-| `react.py` | one in-character reaction as JSON; skips finished jobs so reruns resume |
+| `mkjobs.py` | personas × stimuli × samples → `jobs.json`; `--mode concept`, `--evidence`, `--assumptions`, `--extra` |
+| `react.py` | one in-character reaction as JSON, in page or concept mode; skips finished jobs so reruns resume |
 | `score.py` | SSR scores per reaction and a summary per page × segment |
-| `tally.py` | theme counts or categorical answers per segment |
+| `tally.py` | per segment: theme counts, categorical answers, or yes/no/unsure per assumption |
 
 ## Reading the results
 

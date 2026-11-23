@@ -1,74 +1,125 @@
 ---
 name: ssr-panel
-description: Run a synthetic buyer panel on a web page, offer or copy variant using Semantic Similarity Rating (SSR): Claude role-plays target buyers, writes free-text reactions, and a local embedding model maps them onto a 1-5 purchase-intent scale. Use when the user asks to "test acceptance", "ask the panel", "run a synthetic panel", "SSR", "how would buyers react to this page", compare two page versions, or find objections and buying triggers before shipping copy.
+description: Run a synthetic buyer panel on a product idea, a concept, a web page or a copy variant, using Semantic Similarity Rating (SSR): Claude role-plays the buyers you describe, writes free-text reactions, and a local embedding model maps them onto a 1-5 purchase-intent scale. Works conversationally from the earliest idea stage (a paragraph and a hunch) through to finished pages. Use when the user asks to "test an idea", "test acceptance", "ask the panel", "run a synthetic panel", "SSR", "how would buyers react", "who should I interview first", or wants to compare two versions before building or shipping.
 ---
 
 # SSR synthetic buyer panel
 
 Method from Maier et al. (2025), "LLMs Reproduce Human Purchase Intent via Semantic Similarity Elicitation of Likert Ratings" (arXiv:2510.08338): asking an LLM for a 1-5 number gives a narrow, skewed answer, but asking for a free-text reaction and mapping it onto anchor statements by embedding similarity reproduces human Likert distributions much better. The anchor statements in `scripts/score.py` are this skill's own, worded for buying a service or product; they are not the paper's.
 
-One panel run = personas x stimuli x samples. Each reaction also yields an objection, a buying trigger and a restatement, which are usually worth more than the score.
+One run = personas x stimuli x samples. Each reaction also yields an objection, a buying trigger and a restatement, which are usually worth more than the score.
 
-## Setup (once)
+## How to run this skill: a conversation, not a form
+
+Work with the user in short turns. Ask one or two questions at a time, reflect back what you heard in a sentence, and move on. Use their words in the files you write. Don't ask for something you can infer from what they already said; propose it and let them correct it. Before any run, show a one-screen summary of what the panel will read and who will read it, and get a yes.
+
+## Step 0. Which phase are they in?
+
+Ask what they have. The answer picks the mode:
+
+- **Idea stage** ("I have an idea / a technology / a sketch", nothing a buyer reads yet) → **concept mode**. Go to Step 1.
+- **Something written for buyers** (a landing page, pitch, deck text, service page) → **page mode**. Skip to Step 4.
+
+If unsure, ask: "Does a buyer read this today, or is it still in your head and your notes?"
+
+## Step 1. Concept mode: build the concept brief together
+
+Walk through `examples/concept-brief.md` conversationally, roughly in this order. Accept "don't know"; note it as an open question rather than inventing an answer.
+
+1. "Tell me the idea the way you'd tell a friend." Then draw out: the problem and the moment it happens, who has it (a person, not a market), what the product does, how and where it's used, what changes for them.
+2. "What do people do about this today?" The status quo is what every persona compares against. If the answer is "nothing", ask what that costs them.
+3. "Any rough idea of price or who pays?" A guess is fine; say it will be tested, not held against them.
+4. "Is there more than one version of the idea, or more than one way to pitch it?" Each becomes a separate stimulus.
+
+Then write `concept.txt` (one file per version; see `examples/concept.example.txt`): a short plain paragraph covering problem, who, what it does, how it's used, what changes, rough price. **Only what a buyer would be told**: no assumptions, no evidence, no internal doubts. Read it back and ask "is that how you'd describe it?"
+
+## Step 2. Concept mode: what is actually known
+
+Ask for real-world input, however thin. It is what keeps the panel from being pure model guesswork:
+
+- "Have you spoken to anyone who has this problem? What did they say or do?" Quotes, observations, reviews of similar products, forum posts, a support inbox.
+- Put it in `evidence.json`, keyed by segment (see `examples/evidence.example.json`). `mkjobs.py --evidence` adds it to those personas as first-hand experience.
+- If there is none, say so plainly in the report: the panel then reflects general model knowledge only.
+
+## Step 3. Concept mode: the risky assumptions and the decision
+
+- "What would have to be true for this to work? Which of those worries you most?" Collect 3-5 into `assumptions.json` (see `examples/assumptions.example.json`), each a plain statement a buyer could agree or disagree with ("The home, not the family, would pay").
+- "What decision should this panel help you make?" (which segment to interview first, which version to pursue, whether to keep going). Keep it; the report answers it.
+
+## Step 4. The buyers
+
+Ask who might buy or use it, then propose segments and let the user correct them. Ask who is explicitly not a target. For each segment write about 8-12 personas in `personas.json` (see `examples/personas.example.json`): one concrete sentence each with role, organisation size, location, money situation and a current problem. Vary situations inside a segment. `kind` is the segment label, and must match the keys in `evidence.json`.
+
+At the idea stage, include at least one segment the user is unsure about; the panel is cheap and a surprise here is the most useful result. If a version or offer has no natural buyer on the panel, add one, or a zero will mean nothing.
+
+## Step 5. Run
+
+Setup (once): `python3 -m venv ~/.cache/ssr-venv && ~/.cache/ssr-venv/bin/pip install sentence-transformers`
 
 ```bash
-python3 -m venv ~/.cache/ssr-venv && ~/.cache/ssr-venv/bin/pip install sentence-transformers
-```
-
-`react.py` calls `claude -p --model sonnet` (override with `SSR_MODEL`). Scripts are in this skill's `scripts/` folder; refer to them by absolute path. No API key or network access is needed for scoring: the embedding model runs locally.
-
-## 1. Ask before building the panel
-
-Use AskUserQuestion. Don't guess the buyer; a panel of the wrong people produces confident, wrong advice.
-- Who buys each offer (segments), and who is explicitly NOT a target.
-- Geography and stage/size mix.
-- What to measure: purchase intent, objections and triggers, offer clarity ("what is the main offering?"), which offer they'd buy first.
-
-## 2. Build the panel
-
-Write `personas.json` in a run folder (see `examples/personas.example.json`): 8-12 personas per segment, each one concrete sentence with role, company size, location, money situation and a current problem. Vary sector and situation within a segment. `kind` is the segment label used in every tally.
-
-If the page has an offer for a buyer type the panel lacks, add personas for it. A zero for an offer often means "nobody on the panel is that buyer", not "nobody wants it".
-
-## 3. Get the stimulus
-
-Each stimulus is plain text in `<concept>.txt` in the run folder.
-- Live or local page: `page2text.py <url|file.html> <concept>.txt`. It keeps from the first `<h1>` to the `<footer>`. **Read the first lines of the output and check the hero is included**: a stimulus that starts a section too late silently drops the hero and audience sections.
-- A variant not yet built: copy the text file and edit it. Fine for wording tests; build the real page before the final run.
-
-## 4. Run
-
-```bash
-S=~/.claude/skills/ssr-panel/scripts
-python3 $S/mkjobs.py personas.json jobs.json pageA pageB --samples 2 [--extra extra.json]
-seq 0 $(( $(python3 -c "import json;print(len(json.load(open('jobs.json'))))") - 1 )) | xargs -P 8 -I{} python3 $S/react.py {} jobs.json out
+S=<this skill's folder>/scripts
+# page mode only: turn a URL or HTML file into text (check the first lines include the hero)
+python3 $S/page2text.py https://example.com page.txt
+# build jobs (concept mode shown; page mode: --mode page, no --evidence/--assumptions needed)
+python3 $S/mkjobs.py personas.json jobs.json concept --mode concept --samples 2 \
+  --evidence evidence.json --assumptions assumptions.json [--extra extra.json]
+# run reactions, 8 in parallel (react.py skips finished jobs, so reruns resume)
+N=$(python3 -c "import json;print(len(json.load(open('jobs.json'))))")
+seq 0 $((N-1)) | xargs -P 8 -I{} python3 $S/react.py {} jobs.json out
+# score
 ~/.cache/ssr-venv/bin/python $S/score.py out scored.json
 ```
 
-`--extra` adds answer fields (see `examples/extra.example.json`: main offering, first buy). Two samples per persona per stimulus is the minimum; average them per persona before comparing. `react.py` skips finished jobs, so rerunning resumes.
+Tell the user how many reactions will run before starting (one `claude -p` call each).
 
-## 5. Analyse
+- **Concept mode** asks each persona for: reaction, restatement, what they do today, objection, what must be true to pay, who else must agree, trigger, plus a yes/no/unsure answer with a reason per assumption.
+- **Page mode** asks for reaction, restatement, objection and trigger.
+- `--extra` adds your own questions in either mode (see `examples/extra.example.json`).
 
-- Scores: `score.py` prints mean, sd and the average distribution per stimulus x segment. Compare per persona as well as in total; one persona moving 0.4 explains more than the mean.
-- Themes: `tally.py out objection 'proof=no evidence|no proof|case' 'price=price|pricing|budget'` counts per segment. `tally.py out first_buy` counts categorical answers. Then **read the actual objections**: keyword counts miss phrasings and miscount (e.g. "no evidence" vs "nothing on the page").
-- For an A/B, keep the same personas and samples, change only the stimulus.
+## Step 6. Read it, then talk it through
 
-## 6. Report
+Tally first, then read the actual answers: keyword counts miss phrasings.
 
-- Lead with the decision-relevant finding, not the table. Give scores, then what moved and why, quoting 1-2 persona lines.
-- **Gaps under ~0.2 on the 1-5 scale are noise.** Scores are compressed (most land 3.2-3.8). Say "tie" plainly.
-- A copy change can fix an objection without moving intent. Report the objection shift as the result when that happens.
-- Keep a `README.md` in the run folder: one entry per run with the stimulus, files, scores and the 3-4 findings.
+```bash
+python3 $S/tally.py out --assumptions          # yes / no / unsure per assumption and segment
+python3 $S/tally.py out first_buy              # any categorical extra question
+python3 $S/tally.py out objection 'price=price|cost|budget' 'trust=trust|proof|evidence'
+```
+
+Report conversationally, leading with the answer to the user's decision:
+
+1. **The decision**: which segment leaned in, which version read best, or whether the idea drew polite indifference everywhere.
+2. **Did they understand it?** Compare restatements with the user's intent; quote one that missed.
+3. **The status quo** (concept mode): what personas do today, and whether the idea beats it in their eyes.
+4. **The assumptions**: which held, which broke, by segment, with one quoted reason each.
+5. **Who else must agree** (concept mode): the people a real sale would have to reach.
+6. **Objections and triggers**, with 1-2 persona quotes.
+7. **Scores** last, with the caveats below.
+
+Then ask what they want next:
+- **Revise and rerun**: change the text where it was misread, same personas, same samples, and compare.
+- **Write an interview guide** (`interview-guide.md`): who to recruit (the segment and situation that leaned in, found through its trigger), then one question per broken or uncertain assumption and per recurring objection, asked about past behaviour ("Walk me through the last time…"), never "would you buy".
+- **Stop here**: say what the panel cannot tell them and what the first real conversation should test.
+
+Keep a `README.md` in the run folder: one entry per run with the stimulus, files, scores and the 3-4 findings.
+
+## Reading the numbers
+
+- **Gaps under about 0.2 on the 1-5 scale are noise.** Scores bunch between about 3.2 and 3.8. Say "tie" plainly.
+- A wording change can fix a misreading or an objection without moving intent. Report that as the result.
 
 ## Known biases (say them when they matter)
 
-- **Price:** personas are told to weigh spend against their situation, so "no price on the page" is over-represented. For B2B services, buyers who need a price before a call are often not real prospects; don't let this drive the page.
-- **Proof in my exact sector:** every persona finds the gap between the page's cases and its own sector. One general page can't close it for every segment; a segment-specific page or outreach can.
-- **Generalist doubt:** "one person / small team" objections usually come paired with missing domain proof. Fix the proof, not the team size.
-- **Validity:** SSR was validated on 57 personal-care product surveys (9,300 human responses). For B2B and services, treat it as a structured way to surface objections, triggers and clarity problems, not as a demand forecast. Real conversations or a live A/B test outrank it.
+- **No ground truth.** Unless `evidence.json` holds real input, personas know only what the model knows. Scores are not calibrated against the user's market; use them to compare versions on the same panel.
+- **Price:** personas ask for a price more often than real buyers do.
+- **Proof in my exact sector:** every persona notices examples are not from its own field.
+- **Generalist doubt:** "one person / small team" objections usually travel with missing domain proof.
+- **The panel only contains the buyers you wrote.** A buyer nobody imagined cannot appear.
+- **Validity:** SSR was validated on 57 personal-care product surveys (9,300 human responses). For new concepts, B2B and services, treat the panel as a structured way to surface misreadings, objections, triggers and assumptions to test, not as a demand forecast. Real conversations and observation outrank it.
 
 ## Don'ts
 
-- Don't run without confirming the target segments.
+- Don't run before the user has confirmed the stimulus text and the segments.
+- Don't put assumptions or evidence in the text the panel reads.
 - Don't present a 0.05 difference as a win.
-- Don't publish persona text that names real people or companies as if they were customers.
+- Don't write personas that name real people or companies as if they were customers.

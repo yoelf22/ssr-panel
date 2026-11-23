@@ -1,0 +1,1 @@
+A small wall-mounted sensor for care-home bedrooms that detects a fall without a camera or a wearable. When a resident falls, it sends an alert to the night staff's phones within seconds and logs the time of the fall and of the response. The home pays a monthly fee per room; installation takes ten minutes and needs only a power socket and Wi-Fi.
