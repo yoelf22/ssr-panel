@@ -5,8 +5,12 @@ Each job: {"persona": {"id","kind","text"[, "grounding"]}, "concept": "<name>", 
 The stimulus is read from <dir of jobs.json>/<concept>.txt.
 mode "page" (default): the persona reads a web page or pitch from a company.
 mode "concept": the persona hears a product idea that does not exist yet.
+Backends (env SSR_BACKEND):
+  claude (default): `claude -p --model $SSR_MODEL` (default sonnet); the prompt goes to Anthropic.
+  ollama: a local model via Ollama at $OLLAMA_HOST (default http://localhost:11434),
+          model $SSR_OLLAMA_MODEL (default llama3.1:8b); nothing leaves the machine.
 Skips jobs already done, so a rerun resumes."""
-import json, sys, subprocess, os
+import json, sys, subprocess, os, urllib.request
 i, J, O = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 j = json.load(open(J))[i]
 out = f"{O}/{i}.json"
@@ -47,15 +51,28 @@ Reply ONLY with a JSON object, no code fence, with these keys:
 "objection": your single biggest reason not to buy.
 "trigger": the specific event or condition that would make you contact them this month.{extra}"""
 
-model = os.environ.get("SSR_MODEL", "sonnet")
+backend = os.environ.get("SSR_BACKEND", "claude")
+
+def ask(prompt):
+    if backend == "ollama":
+        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+        if not host.startswith("http"): host = "http://" + host
+        body = json.dumps({"model": os.environ.get("SSR_OLLAMA_MODEL", "llama3.1:8b"), "prompt": prompt,
+                           "format": "json", "stream": False, "options": {"temperature": 0.8}}).encode()
+        req = urllib.request.Request(host + "/api/generate", data=body, headers={"Content-Type": "application/json"})
+        return json.loads(urllib.request.urlopen(req, timeout=600).read())["response"]
+    if backend != "claude": sys.exit(f"unknown SSR_BACKEND {backend!r} (claude | ollama)")
+    r = subprocess.run(["claude", "-p", "--model", os.environ.get("SSR_MODEL", "sonnet"), prompt],
+                       capture_output=True, text=True, timeout=300, cwd="/tmp")
+    return r.stdout
+
 d = None
 for _ in range(3):
-    r = subprocess.run(["claude", "-p", "--model", model, prompt], capture_output=True, text=True, timeout=300, cwd="/tmp")
-    t = r.stdout.strip(); t = t[t.find("{"):t.rfind("}") + 1]
+    t = ask(prompt).strip(); t = t[t.find("{"):t.rfind("}") + 1]
     try:
         d = json.loads(t); break
     except Exception:
         pass
 if d is None: sys.exit(f"job {i}: no JSON after 3 tries")
-d.update(id=p["id"], kind=p["kind"], concept=j["concept"], sample=j["sample"], mode=j.get("mode", "page"))
+d.update(id=p["id"], kind=p["kind"], concept=j["concept"], sample=j["sample"], mode=j.get("mode", "page"), backend=backend)
 json.dump(d, open(out, "w"))

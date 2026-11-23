@@ -4,3 +4,12 @@ __pycache__/
 .venv/
 scored*.json
 .DS_Store
+
+# Run inputs describe unreleased ideas and real people: never commit them.
+/concept*.txt
+/page*.txt
+/evidence*.json
+/assumptions*.json
+/personas*.json
+/jobs*.json
+/interview-guide.md

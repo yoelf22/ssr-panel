@@ -9,7 +9,7 @@ evidence.json: {"segment": "what real people in this segment have said or done",
 assumptions.json: ["Care homes have a budget line for fall response.", ...]
   -> each becomes a question a1, a2, ... answered "yes", "no" or "unsure" plus a reason.
 Each stimulus name must have a matching <stimulus>.txt next to jobs.json."""
-import json, argparse
+import json, argparse, os, subprocess
 ap = argparse.ArgumentParser()
 ap.add_argument("personas"); ap.add_argument("jobs"); ap.add_argument("stimuli", nargs="+")
 ap.add_argument("--samples", type=int, default=2); ap.add_argument("--mode", default="page", choices=["page", "concept"])
@@ -29,3 +29,9 @@ jobs = [dict(persona=p, concept=c, sample=s, mode=a.mode, **({"extra": extra} if
 json.dump(jobs, open(a.jobs, "w"), indent=1)
 print(f"{len(jobs)} jobs: {len(P)} personas x {len(a.stimuli)} stimuli x {a.samples} samples, mode={a.mode}"
       + (f", {len([k for k in extra if k.startswith('a') and k[1:].isdigit()])} assumptions" if a.assumptions else ""))
+# Confidentiality guard: an idea's files should not sit inside a git repository.
+d = os.path.dirname(os.path.abspath(a.jobs))
+inside = subprocess.run(["git", "-C", d, "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+if inside.returncode == 0:
+    print(f"WARNING: {d} is inside the git repository {inside.stdout.strip()}. Concept, evidence and "
+          "persona files could be committed and pushed. Use a folder outside any repo, e.g. ~/ssr-runs/<codename>/.")

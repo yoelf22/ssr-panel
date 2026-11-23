@@ -22,6 +22,17 @@ Ask what they have. The answer picks the mode:
 
 If unsure, ask: "Does a buyer read this today, or is it still in your head and your notes?"
 
+## Step 0.5. Confidentiality, before anything is written down
+
+Inventors and early founders are rightly protective of unreleased ideas. Settle this first, briefly and without alarm:
+
+1. **Patents.** If the idea may be patentable, say: "If you plan to patent this, file a priority or provisional application before you describe it to anyone outside your control: people or online services. In many countries, Europe included, disclosure before filing can destroy novelty. Whether sending text to an AI provider counts as disclosure is not settled; I'm not giving legal advice, so check with a patent attorney." Then continue only in the way they choose.
+2. **Where the reactions are generated.** Explain the choice:
+   - **Claude (default):** best persona quality. Everything the panel reads, the personas and any evidence go to Anthropic in every reaction call, under the data terms of the user's Claude plan. Ask them to check their plan's data settings if this matters.
+   - **Local (`SSR_BACKEND=ollama`):** nothing leaves the machine. Needs Ollama and a downloaded model; personas are less realistic with small models.
+   Scoring always runs locally either way.
+3. **A codename and a safe folder.** Ask for a codename and use it in folder and file names. Create the run folder outside any git repository, default `~/ssr-runs/<codename>/`. `mkjobs.py` warns if the folder is inside a repo; treat that warning as a stop.
+
 ## Step 1. Concept mode: build the concept brief together
 
 Walk through `examples/concept-brief.md` conversationally, roughly in this order. Accept "don't know"; note it as an open question rather than inventing an answer.
@@ -33,11 +44,15 @@ Walk through `examples/concept-brief.md` conversationally, roughly in this order
 
 Then write `concept.txt` (one file per version; see `examples/concept.example.txt`): a short plain paragraph covering problem, who, what it does, how it's used, what changes, rough price. **Only what a buyer would be told**: no assumptions, no evidence, no internal doubts. Read it back and ask "is that how you'd describe it?"
 
+**Test the what, never the how.** Buyers judge outcomes, not mechanisms. Describe the problem, the user, the outcome, the form and the price, and leave out how it works: sensing method, materials, algorithms, circuits, chemistry, architecture, part numbers, test data. A buyer doesn't need "60 GHz radar with a micro-Doppler classifier"; "detects a fall without a camera or a wearable" is enough, and the mechanism is what a patent protects.
+
 ## Step 2. Concept mode: what is actually known
 
 Ask for real-world input, however thin. It is what keeps the panel from being pure model guesswork:
 
 - "Have you spoken to anyone who has this problem? What did they say or do?" Quotes, observations, reviews of similar products, forum posts, a support inbox.
+- **Ask for files explicitly:** "If you have interview notes, call transcripts, survey exports, reviews or a deck, give me the file paths and I'll pull out what's relevant." Read them, then summarise per segment; don't paste whole documents into the evidence.
+- **Anonymise as you summarise.** Replace names, emails, phone numbers and company names with roles and descriptions ("a night manager at a 60-bed home"). Real people's details never go into the evidence, whichever backend is used.
 - Put it in `evidence.json`, keyed by segment (see `examples/evidence.example.json`). `mkjobs.py --evidence` adds it to those personas as first-hand experience.
 - If there is none, say so plainly in the report: the panel then reflects general model knowledge only.
 
@@ -70,8 +85,12 @@ seq 0 $((N-1)) | xargs -P 8 -I{} python3 $S/react.py {} jobs.json out
 ~/.cache/ssr-venv/bin/python $S/score.py out scored.json
 ```
 
-Tell the user how many reactions will run before starting (one `claude -p` call each).
+**Before running, do a disclosure check and get a yes.**
+1. Re-read every file the panel will see: the stimulus texts, `evidence.json`, `assumptions.json`, `personas.json`. Flag anything that reveals how the invention works or identifies a real person, quote the line, and propose a buyer-terms rewrite. Change nothing without the user's agreement.
+2. Show a short summary: which files, how many reactions, which backend, and in one line what leaves the machine. For example: "4 files go to Anthropic in 48 calls; the scoring stays on this machine." Or, with Ollama: "Nothing leaves this machine."
+3. Run only after an explicit yes.
 
+- `SSR_BACKEND=ollama` (with optional `SSR_OLLAMA_MODEL`, `OLLAMA_HOST`) runs the reactions on a local model.
 - **Concept mode** asks each persona for: reaction, restatement, what they do today, objection, what must be true to pay, who else must agree, trigger, plus a yes/no/unsure answer with a reason per assumption.
 - **Page mode** asks for reaction, restatement, objection and trigger.
 - `--extra` adds your own questions in either mode (see `examples/extra.example.json`).
@@ -103,6 +122,8 @@ Then ask what they want next:
 
 Keep a `README.md` in the run folder: one entry per run with the stimulus, files, scores and the 3-4 findings.
 
+**When the user is done**, offer to clear the confidential inputs: `python3 $S/purge.py <run_folder>` deletes the stimulus, evidence, assumptions, personas and jobs after listing them; `--all` also deletes reactions, scores and the guide. It asks before deleting.
+
 ## Reading the numbers
 
 - **Gaps under about 0.2 on the 1-5 scale are noise.** Scores bunch between about 3.2 and 3.8. Say "tie" plainly.
@@ -121,5 +142,7 @@ Keep a `README.md` in the run folder: one entry per run with the stimulus, files
 
 - Don't run before the user has confirmed the stimulus text and the segments.
 - Don't put assumptions or evidence in the text the panel reads.
+- Don't put mechanisms, technical detail or real people's identities in anything the panel reads.
+- Don't create run files inside a git repository.
 - Don't present a 0.05 difference as a win.
 - Don't write personas that name real people or companies as if they were customers.
