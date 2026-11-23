@@ -26,7 +26,8 @@ If unsure, ask: "Does a buyer read this today, or is it still in your head and y
 
 Inventors and early founders are rightly protective of unreleased ideas. Settle this first, briefly and without alarm:
 
-1. **Patents.** If the idea may be patentable, say: "If you plan to patent this, file a priority or provisional application before you describe it to anyone outside your control: people or online services. In many countries, Europe included, disclosure before filing can destroy novelty. Whether sending text to an AI provider counts as disclosure is not settled; I'm not giving legal advice, so check with a patent attorney." Then continue only in the way they choose.
+1. **Patent confidentiality is a real issue; raise it.** Ask whether the idea might be patented. If yes, say: "In many countries, Europe included, describing an invention before filing can destroy its novelty, and whether sending text to an AI provider counts as disclosure is not settled. The safe order is to file a priority or provisional application first. If you want to test before filing, we describe only what the product does for the buyer and keep out how it does it. I'm not giving legal advice; check with a patent attorney." Then continue only in the way they choose.
+   For many purely digital products, formal IP is not a realistic option either way: software and business methods are hard or impossible to patent in many jurisdictions. Say so if it applies. The concern then is a competitor learning the approach, and the same rule protects it: describe the outcome, keep the method.
 2. **Where the reactions are generated.** Explain the choice:
    - **Claude (default):** best persona quality. Everything the panel reads, the personas and any evidence go to Anthropic in every reaction call, under the data terms of the user's Claude plan. Ask them to check their plan's data settings if this matters.
    - **Local (`SSR_BACKEND=ollama`):** nothing leaves the machine. Needs Ollama and a downloaded model; personas are less realistic with small models.
@@ -44,7 +45,13 @@ Walk through `examples/concept-brief.md` conversationally, roughly in this order
 
 Then write `concept.txt` (one file per version; see `examples/concept.example.txt`): a short plain paragraph covering problem, who, what it does, how it's used, what changes, rough price. **Only what a buyer would be told**: no assumptions, no evidence, no internal doubts. Read it back and ask "is that how you'd describe it?"
 
-**Test the what, never the how.** Buyers judge outcomes, not mechanisms. Describe the problem, the user, the outcome, the form and the price, and leave out how it works: sensing method, materials, algorithms, circuits, chemistry, architecture, part numbers, test data. A buyer doesn't need "60 GHz radar with a micro-Doppler classifier"; "detects a fall without a camera or a wearable" is enough, and the mechanism is what a patent protects.
+**Test the what, never the how.** Buyers judge outcomes, not mechanisms. Describe the problem, the user, the outcome, the form and the price. **Do not disclose:**
+- how it works: the technical principle, sensing method, algorithm or model approach, chemistry or formulation;
+- how it is built: circuits, mechanical design, materials, architecture, drawings, part numbers;
+- what makes it work better than the alternatives: test data, accuracy figures, the key insight or trick;
+- for digital products: data sources, model or prompt design, integrations and pricing mechanics that competitors could copy.
+
+A buyer doesn't need "60 GHz radar with a micro-Doppler classifier"; "detects a fall without a camera or a wearable" is enough to react to, and the mechanism is what a patent, or your head start, protects.
 
 ## Step 2. Concept mode: what is actually known
 
