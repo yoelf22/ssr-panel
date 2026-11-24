@@ -76,7 +76,7 @@ git clone https://github.com/yoelf22/ssr-panel ~/.claude/skills/ssr-panel
 python3 -m venv ~/.cache/ssr-venv && ~/.cache/ssr-venv/bin/pip install sentence-transformers
 ```
 
-It needs the [Claude Code](https://claude.com/claude-code) CLI (`claude -p`) for the reactions. Scoring runs locally; the embedding model downloads on first use.
+It needs the [Claude Code](https://claude.com/claude-code) CLI (`claude -p`) for the reactions. The reactions run on Haiku by default (`SSR_MODEL=sonnet` for richer personas), with no tools, hooks or CLAUDE.md loaded. Scoring runs locally; the embedding model downloads on first use.
 
 **Fully local option:** install [Ollama](https://ollama.com), pull a model (`ollama pull llama3.1:8b`, or a larger one for better personas), and set `SSR_BACKEND=ollama` (optionally `SSR_OLLAMA_MODEL`, `OLLAMA_HOST`). The Ollama path is tested against a stub of the Ollama API, not yet against a real model.
 

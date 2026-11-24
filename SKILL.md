@@ -29,7 +29,7 @@ Inventors and early founders are rightly protective of unreleased ideas. Settle 
 1. **Patent confidentiality is a real issue; raise it.** Ask whether the idea might be patented. If yes, say: "In many countries, Europe included, describing an invention before filing can destroy its novelty, and whether sending text to an AI provider counts as disclosure is not settled. The safe order is to file a priority or provisional application first. If you want to test before filing, we describe only what the product does for the buyer and keep out how it does it. I'm not giving legal advice; check with a patent attorney." Then continue only in the way they choose.
    For many purely digital products, formal IP is not a realistic option either way: software and business methods are hard or impossible to patent in many jurisdictions. Say so if it applies. The concern then is a competitor learning the approach, and the same rule protects it: describe the outcome, keep the method.
 2. **Where the reactions are generated.** Explain the choice:
-   - **Claude (default):** best persona quality. Everything the panel reads, the personas and any evidence go to Anthropic in every reaction call, under the data terms of the user's Claude plan. Ask them to check their plan's data settings if this matters.
+   - **Claude (default):** the interviews run on Haiku (`SSR_MODEL=haiku`, the default) in separate `claude -p` calls, while the planning, disclosure check and analysis stay in this session's model. Haiku gives scores and objections close to Sonnet's at a fraction of the cost; set `SSR_MODEL=sonnet` for a final run or when personas read flat. Each call runs with no tools, hooks, settings or CLAUDE.md, so the user's own instructions never reach a persona. Everything the panel reads, the personas and any evidence go to Anthropic in every reaction call, under the data terms of the user's Claude plan. Ask them to check their plan's data settings if this matters.
    - **Local (`SSR_BACKEND=ollama`):** nothing leaves the machine. Needs Ollama and a downloaded model; personas are less realistic with small models.
    Scoring always runs locally either way.
 3. **A codename and a safe folder.** Ask for a codename and use it in folder and file names. Create the run folder outside any git repository, default `~/ssr-runs/<codename>/`. `mkjobs.py` warns if the folder is inside a repo; treat that warning as a stop.
@@ -97,6 +97,7 @@ seq 0 $((N-1)) | xargs -P 8 -I{} python3 $S/react.py {} jobs.json out
 2. Show a short summary: which files, how many reactions, which backend, and in one line what leaves the machine. For example: "4 files go to Anthropic in 48 calls; the scoring stays on this machine." Or, with Ollama: "Nothing leaves this machine."
 3. Run only after an explicit yes.
 
+- `SSR_MODEL` picks the interview model on the Claude backend: `haiku` (default) or `sonnet`. Keep the same model across runs you compare; each reaction records its `model`.
 - `SSR_BACKEND=ollama` (with optional `SSR_OLLAMA_MODEL`, `OLLAMA_HOST`) runs the reactions on a local model.
 - **Concept mode** asks each persona for: reaction, restatement, what they do today, objection, what must be true to pay, who else must agree, trigger, plus a yes/no/unsure answer with a reason per assumption.
 - **Page mode** asks for reaction, restatement, objection and trigger.

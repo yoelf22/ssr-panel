@@ -6,7 +6,10 @@ The stimulus is read from <dir of jobs.json>/<concept>.txt.
 mode "page" (default): the persona reads a web page or pitch from a company.
 mode "concept": the persona hears a product idea that does not exist yet.
 Backends (env SSR_BACKEND):
-  claude (default): `claude -p --model $SSR_MODEL` (default sonnet); the prompt goes to Anthropic.
+  claude (default): `claude -p --model $SSR_MODEL` (default haiku: the interviews are cheap,
+          role-play-only calls; analysis stays in the main session). Set SSR_MODEL=sonnet for
+          richer personas. Calls run with no tools, hooks, settings, CLAUDE.md or MCP, so the
+          user's own instructions never leak into a persona. The prompt goes to Anthropic.
   ollama: a local model via Ollama at $OLLAMA_HOST (default http://localhost:11434),
           model $SSR_OLLAMA_MODEL (default llama3.1:8b); nothing leaves the machine.
 Skips jobs already done, so a rerun resumes."""
@@ -62,7 +65,10 @@ def ask(prompt):
         req = urllib.request.Request(host + "/api/generate", data=body, headers={"Content-Type": "application/json"})
         return json.loads(urllib.request.urlopen(req, timeout=600).read())["response"]
     if backend != "claude": sys.exit(f"unknown SSR_BACKEND {backend!r} (claude | ollama)")
-    r = subprocess.run(["claude", "-p", "--model", os.environ.get("SSR_MODEL", "sonnet"), prompt],
+    r = subprocess.run(["claude", "-p", "--model", os.environ.get("SSR_MODEL", "haiku"),
+                        "--system-prompt", "You answer as the person described, in character, and reply with JSON only.",
+                        "--setting-sources", "", "--tools", "", "--strict-mcp-config",
+                        "--disable-slash-commands", "--no-session-persistence", prompt],
                        capture_output=True, text=True, timeout=300, cwd="/tmp")
     return r.stdout
 
@@ -74,5 +80,6 @@ for _ in range(3):
     except Exception:
         pass
 if d is None: sys.exit(f"job {i}: no JSON after 3 tries")
-d.update(id=p["id"], kind=p["kind"], concept=j["concept"], sample=j["sample"], mode=j.get("mode", "page"), backend=backend)
+d.update(id=p["id"], kind=p["kind"], concept=j["concept"], sample=j["sample"], mode=j.get("mode", "page"), backend=backend,
+         model=os.environ.get("SSR_MODEL", "haiku") if backend == "claude" else os.environ.get("SSR_OLLAMA_MODEL", "llama3.1:8b"))
 json.dump(d, open(out, "w"))
